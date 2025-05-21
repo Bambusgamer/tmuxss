@@ -1,6 +1,6 @@
 # `tmuxss` — A Simple Bash Tmux Multiview Session Manager
 
-** `tmuxss`** is a lightweight session manager for `tmux` that enables multiview workflows using reusable JSON templates and structured session creation.
+**`tmuxss`** is a lightweight session manager for `tmux` that enables multiview workflows using reusable JSON templates and structured session creation.
 
 ---
 
