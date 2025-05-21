@@ -1,0 +1,105 @@
+{
+    "default": "default",
+    "envs": {
+        "default": {
+            "path": ".",
+            "focused": 0,
+            "windows": [
+                {
+                    "name": "code",
+                    "path": ".",
+                    "command-run": "nvim"
+                },
+                {
+                    "name": "util",
+                    "path": ".",
+                    "command_run": "set +x && clear && echo -e \"\\033[1;32mHave fun! \\033[0m\\n\\n\\033[1;36mDate:\\033[0m \\033[1;33m$(date '+%A, %B %d, %Y')\\033[0m\\n\\033[1;36mTime:\\033[0m \\033[1;33m$(date '+%H:%M:%S')\\033[0m\\n\"; history -d $(history 1)"
+                }
+            ]
+        },
+        "main": {
+            "path": "~",
+            "focused": 0,
+            "windows": [
+                {
+                    "name": "main",
+                    "path": ".",
+                    "command_run": "set +x && clear && echo -e \"\\n\\033[1;32mWelcome, $USER! \\033[0m\\n\\n\\033[1;36mSystem:\\033[0m \\033[1;33m$(hostname)\\033[0m\\n\\033[1;36mDate:\\033[0m \\033[1;33m$(date '+%A, %B %d, %Y')\\033[0m\\n\\033[1;36mTime:\\033[0m \\033[1;33m$(date '+%H:%M:%S')\\033[0m\\n\"; history -d $(history 1)"
+                }
+            ]
+        },
+        "AP": {
+            "path": "/home/vincent/src/autopurger",
+            "group": "AP",
+            "focused": 0,
+            "windows": [
+                {
+                    "name": "code",
+                    "path": ".",
+                    "read_only": true,
+                    "hist_file": "./.hist/code",
+                    "command_run": "nvim"
+                },
+                {
+                    "name": "runtime",
+                    "hsplit": [
+                        {
+                            "vsplit": [
+                                {
+                                    "command_prepare": "NODE_ENV=development ts-node src/index",
+                                    "path": "./apps/discord-gateway-connector",
+                                    "hist_file": "./.hist/discord-gateway-connector"
+                                },
+                                {
+                                    "command_prepare": "NODE_ENV=development ts-node src/index",
+                                    "path": "./apps/fetch-engine",
+                                    "hist_file": "./.hist/fetch-engine"
+                                }
+                            ]
+                        },
+                        {
+                            "vsplit": [
+                                {
+                                    "command_prepare": "NODE_ENV=development ts-node src/index",
+                                    "path": "./apps/delete-engine",
+                                    "hist_file": "./.hist/delete-engine"
+                                },
+                                {
+                                    "command_prepare": "NODE_ENV=development ts-node src/index",
+                                    "path": "./apps/interactions",
+                                    "hist_file": "./.hist/interactions"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "util",
+                    "path": ".",
+                    "hist_file": "./.hist/util"
+                },
+                {
+                    "name": "cloc",
+                    "path": ".",
+                    "read_only": true,
+                    "hist_file": "./.hist/cloc",
+                    "command_run": "./countLines"
+                },
+                {
+                    "name": "git",
+                    "path": ".",
+                    "hist_file": "./.hist/git",
+                    "command_run": "git status"
+                },
+                {
+                    "name": "prod",
+                    "path": ".",
+                    "read_only": true,
+                    "hist_file": "./.hist/prod",
+                    "command_prepare": "ssh ubuntu@mainnode"
+                }
+            ]
+        }
+    }
+}
+
