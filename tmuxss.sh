@@ -110,11 +110,11 @@ ${BOLD_BLUE}Examples:${RESET}
                   ${CYAN}]${RESET}
                 ${CYAN}},${RESET}
                 ${CYAN}{${RESET} ${YELLOW}"command_run"${RESET}: ${GREEN}"htop"${RESET} ${CYAN}}${RESET}
-              ${CYAN}]${_RESET}
+              ${CYAN}]${RESET}
             ${CYAN}}${RESET}
           ${CYAN}]${RESET}
         ${CYAN}}${RESET}
-      ${CYAN}}${_RESET}
+      ${CYAN}}${RESET}
     ${CYAN}}${RESET}
 
 EOF
@@ -234,6 +234,9 @@ resolve_path() {
     local base=$1
     local pair=$2
 
+    [[ -z $pair ]] && pair="."
+    [[ $pair == ~* ]] && pair="${pair/#\~/$HOME}"
+
     if [[ $pair = /* ]]; then
         realpath "$pair"
     else
@@ -278,7 +281,7 @@ visit_pane() {
 
     local path="${key}_path"
     path=${!path}
-    [[ -z $path ]] && path="."
+
     path=$(resolve_path "$BASE_PATH" "$path")
 
     local pane_id="$GROUP:$window_index.$pane_index"
@@ -314,13 +317,11 @@ visit_window() {
     local key="$1"
     local window_index="$2"
 
+    visit_pane "$key" "$window_index" &
+
     local name="${key}_name"
     name=${!name}
-    [[ -z $name ]] && name=$WINDOW
-
-    visit_pane "$key" "$window_index"
-
-    tmux rename-window -t "$GROUP:$window_index" "$name"
+    [[ -n $name ]] && tmux rename-window -t "$GROUP:$window_index" "$name"
 }
 
 DATA=""
@@ -328,27 +329,8 @@ BASE_PATH=$PWD
 declare -A PANE_INDEX
 
 build_template() {
-    local file
-    file=$(<"$TEMPLATE_SOURCE")
-    [[ -z $file ]] && { echo "Template file not found"; exit 3; }
-
-    DATA=$(yq -p=json -o shell <<< "$file") || {
-        echo "Invalid template file"
-        exit 3
-    }
-    eval "$DATA"
-
-    local template="envs_${TEMPLATE}"
-    if ! grep -q "$template" <<< "$DATA"; then { echo "Session template not found"; exit 3; }; fi
-
-    local group="${template}_group"
-    group=${!group}
-    if [[ -n $group && $GROUP != $group ]]; then exec tmuxss -c -g "$group" -t "$TEMPLATE"; fi
-
-    local path="${template}_path"
+    local path="${template_key}_path"
     path=${!path}
-    [[ -z $path ]] && path="."
-    [[ $path == "~" ]] && path=$(realpath ~)
     
     BASE_PATH=$(resolve_path $BASE_PATH $path)
 
@@ -356,8 +338,8 @@ build_template() {
 
     local i=0
     while :; do
-       local key="${template}_windows_${i}"
-        if ! grep -q "$key" <<< "$DATA"; then break; fi
+       local key="${template_key}_windows_${i}"
+        if [ $i -gt 0 ] && ! grep -q "$key" <<< "$DATA"; then break; fi
 
         [[ $i -gt 0 ]] && tmux new-window -d -t "$GROUP"
 
@@ -366,7 +348,7 @@ build_template() {
     done
     wait
 
-    local focused_window="${template}_focused"
+    local focused_window="${template_key}_focused"
     focused_window=${!focused_window}
     [[ -z $focused_window ]] && focused_window="0"
 
@@ -379,7 +361,7 @@ k)
         SESSION_LIST=$(tmux list-sessions -F "#{session_name}")
 
         for SESSION in $SESSION_LIST; do
-            if [[ $SESSION == $GROUP* ]]; then
+            if [[ $SESSION == "$GROUP#"* || $SESSION == $GROUP ]]; then
                 if [[ "$GROUP#$SID" == $ATTACHED_TO && $GROUP != "main" ]]; then
                     attachSession main $SID
                 fi
@@ -421,6 +403,37 @@ i)
     exit 0
     ;;
 c)
+    file=$(<"$TEMPLATE_SOURCE")
+    if [[ -n $file ]] && $YQ_AVAILABLE; then
+        DATA=$(yq -p=json -o shell <<< "$file") || {
+            echo "Invalid template file"
+            exit 3
+        }
+    fi
+    if [[ -z $DATA ]]; then
+        if [[ -n $TEMPLATE && $TEMPLATE != "main" ]]; then
+            ! $YQ_AVAILABLE && { echo "Using templates requires yq to be installed"; exit 1; }
+            echo "Could not locate config file"
+            exit 1
+        fi
+        DATA="default='default' envs_default_path='.' envs_main_path='~' envs_main_group='main'"
+    fi
+
+    eval "$DATA"
+
+    if [[ -z $TEMPLATE ]]; then
+        default_template="default"
+        default_template=${!default_template}
+        [[ -n $default_template ]] && TEMPLATE=$default_template
+    fi
+
+    template_key="envs_${TEMPLATE}"
+    if ! grep -q "$template_key" <<< "$DATA"; then { echo "Session template not found"; exit 3; }; fi
+
+    template_group="${template_key}_group"
+    template_group=${!template_group}
+    [[ -n $template_group ]] && GROUP=$template_group
+
     if [[ -z $GROUP ]]; then
         GROUP=$(sanitize_path "$(basename "$PWD")")
 
@@ -432,21 +445,7 @@ c)
     [[ -z $SID ]] && SID=$$
 
     if [[ -z $(tmux list-sessions -F "#{session_name}" | grep "^$GROUP$") ]]; then
-        if [[ -z $TEMPLATE ]] && command -v yq 2>&1 >/dev/null ; then
-            file=$(cat "$TEMPLATE_SOURCE")
-            if [[ -n $file ]]; then
-                default_template=$(echo "$file" | yq e ".default" -)
-                [[ $default_template != "null" ]] && TEMPLATE=$default_template
-            fi
-        fi
-        if [[ -n $TEMPLATE ]]; then
-            [ $YQ_AVAILABLE ] && build_template
-            [ ! $YQ_AVAILABLE ] && [[ $TEMPLATE != "main" ]] && { echo "Using templates requires yq to be installed"; exit 1; }
-            [ ! $YQ_AVAILABLE ] && [[ $TEMPLATE == "main" ]] && TEMPLATE=false
-        fi
-        if [[ -z $TEMPLATE ]]; then
-            tmux neww -t "$GROUP"
-        fi
+        build_template
     fi
     
     if [[ $DETACH -eq 0 ]]; then
